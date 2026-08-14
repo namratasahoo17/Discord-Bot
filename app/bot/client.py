@@ -35,5 +35,14 @@ async def on_ready():
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("Pong! Custos is online.")
 
+@bot.tree.command(name="help", description="Get help with Custos")
+async def help(interaction: discord.Interaction):
+    help_message = (
+        "Here are the available commands:\n"
+        "/ping - Check if Custos is running\n"
+        "/help - Get help with Custos\n"
+        # Add more commands and descriptions as needed
+    )
+    await interaction.response.send_message(help_message)
 
 bot.run(TOKEN)
