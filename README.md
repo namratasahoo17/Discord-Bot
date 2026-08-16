@@ -2,21 +2,21 @@
 This bot is made for our need in personal discord server where it checks , tracks and assigns badges according to the someone's achievements and learnings.
 <p>
 /register
-    ↓<p>
+</p>↓<p>
 Create User
-</p>
+</p></p>
 /submit
-</p>   ↓
+</p>   ↓</p>
 Submit today's study
-</p>    ↓
+</p>    ↓</p>
 Save StudySubmission
-</p>    ↓
+</p>    ↓</p>
 Calculate streak
-</p>   ↓
+</p>   ↓</p>
 Check & award badges
-</p>
+</p></p>
 /profile
-</p>    ↓
+</p>    ↓</p>
 Show:
 </p>  • Name
 </p>  • Discord ID
