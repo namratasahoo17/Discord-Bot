@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 from sqlalchemy import (
     String,
@@ -7,7 +7,7 @@ from sqlalchemy import (
     Date,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .connection import Base
 
@@ -15,7 +15,9 @@ from .connection import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
 
     discord_id: Mapped[str] = mapped_column(
         String(100),
@@ -36,84 +38,99 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         default=datetime.utcnow,
     )
-    #one user,many submissions
-    submissions: Maped[list["StudySubmission"]]=relationship(
+
+    # One user -> many study submissions
+    submissions: Mapped[list["StudySubmission"]] = relationship(
         back_populates="user",
-        cascade="all,delete-orphan",
+        cascade="all, delete-orphan",
     )
 
+    # One user -> many awarded badges
+    user_badges: Mapped[list["UserBadge"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
 class StudySubmission(Base):
-    __tablename__="study_submissions"
-    id: Mapped[int]=mapped_column(
+    __tablename__ = "study_submissions"
+
+    id: Mapped[int] = mapped_column(
         primary_key=True
     )
 
-    #connect this submission to the User who made it
-    user_id: Mapped[int]=mapped_column(
+    # Connect this submission to the User who made it
+    user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
         nullable=False,
     )
 
-
-    # We store the DATE separately from created_at.
+    # The day this study belongs to.
     #
-    # created_at = exact time the user clicked Submit
-    # study_date = which day the study belongs to
+    # study_date = date being logged
+    # created_at = exact time the submission was created
     #
     # Streaks should be based on study_date.
-
-    study_date: Mapped[date]=mapped_column(
+    study_date: Mapped[date] = mapped_column(
         Date,
         nullable=False,
     )
-    subject: Mapped[str]=mapped_column(
+
+    subject: Mapped[str] = mapped_column(
         String(200),
         nullable=False,
     )
-    description: Mapped[str]=mapped_column(
+
+    description: Mapped[str] = mapped_column(
         Text,
         nullable=False,
     )
-    difficulty: Mapped[str]=mapped_column(
+
+    difficulty: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
     )
-    created_at: Mapped[datetime]=mapped_column(
+
+    created_at: Mapped[datetime] = mapped_column(
         default=datetime.utcnow,
     )
-    user: Mapped["User"]= relationship(
+
+    # Connect this submission back to its User
+    user: Mapped["User"] = relationship(
         back_populates="submissions"
     )
 
-    # IMPORTANT:
-    #
     # A user can submit only ONE study log per day.
     #
-    # This prevents someone from submitting 5 times today
-    # and accidentally manipulating their study-day statistics.
-    __table_args__=(
+    # This prevents multiple submissions on the same day
+    # from manipulating study-day statistics.
+    """__table_args__ = (
         UniqueConstraint(
             "user_id",
             "study_date",
             name="unique_user_study_date",
         ),
-    )
+    )"""
+
 
 class Badge(Base):
-    __tablename__="badges"
+    __tablename__ = "badges"
 
     id: Mapped[int] = mapped_column(
         primary_key=True
     )
+
     name: Mapped[str] = mapped_column(
         String(100),
         unique=True,
         nullable=False,
     )
+
     description: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
     )
+
 
 class UserBadge(Base):
     __tablename__ = "user_badges"
@@ -136,10 +153,12 @@ class UserBadge(Base):
         default=datetime.utcnow,
     )
 
+    # Connect this UserBadge back to the User
     user: Mapped["User"] = relationship(
         back_populates="user_badges"
     )
 
+    # Connect this UserBadge to the Badge
     badge: Mapped["Badge"] = relationship()
 
     # A user should never receive the exact same badge twice.

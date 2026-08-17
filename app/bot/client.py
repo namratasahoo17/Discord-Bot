@@ -142,10 +142,11 @@ async def profile(
     discord_id = str(
         interaction.user.id
     )
+
     db = SessionLocal()
-    
+
     try:
-        #Find their Custos Profile using their Discord ID.
+        # Find their Custos Profile using their Discord ID.
         user = (
             db.query(User)
             .filter(
@@ -153,9 +154,9 @@ async def profile(
             )
             .first()
         )
+
         # A user must register before they can have a profile.
         if not user:
-
             await interaction.response.send_message(
                 "You aren't registered with Custos yet.\n"
                 "Please use `/register` first.",
@@ -164,8 +165,6 @@ async def profile(
             return
 
         # CREATE PROFILE EMBED
-        # Embeds make the profile considerably cleaner than
-        # sending a large block of plain text.
         embed = discord.Embed(
             title="📚 Custos Profile",
             description=(
@@ -179,23 +178,25 @@ async def profile(
             value=user.username,
             inline=True,
         )
+
         embed.add_field(
             name="Discord ID",
             value=user.discord_id,
             inline=True,
         )
+
         embed.add_field(
             name="Custos ID",
             value=str(user.id),
             inline=True,
         )
-        embed.add_file(
+
+        embed.add_field(
             name="College ID",
             value=user.college_id,
             inline=True,
         )
-        # When the user registered.
-        # This is stored by SQLAlchemy in created_at.
+
         embed.add_field(
             name="📅 Registered",
             value=user.created_at.strftime(
@@ -203,46 +204,29 @@ async def profile(
             ),
             inline=True,
         )
-        # When the user registered.
-        # This is stored by SQLAlchemy in created_at.
-        embed.add_field(
-            name="📅 Registered",
-            value=user.created_at.strftime(
-                "%d %B %Y"
-            ),
-            inline=True,
+
+        # Footer
+        embed.set_footer(
+            text="Custos. Study. Track. Grow."
         )
-        # FUTURE FEATURES
-        #
-        # We're intentionally NOT calculating streaks or
-        # badges yet.
-        #
-        # Later, we can add fields here such as:
-        #
-        #  Current Streak
-        #  Longest Streak
-        #  Study Days
-        #  Badges
-        #
-        # without changing the basic profile structure.
-        embed.set_factor(
-            text="Custos.Study.Track.Grow."
-        )
-        #Profile info is private, so only the user
-        #who requested it should see it.
+
+        # Profile info is private.
         await interaction.response.send_message(
             embed=embed,
             ephemeral=True,
         )
+
     except Exception as e:
         print(
-            f"Profile error:{e}"
+            f"Profile error: {e}"
         )
+
         await interaction.response.send_message(
             "Something went wrong while loading "
-            "your profile. ",
+            "your profile.",
             ephemeral=True,
         )
+
     finally:
         db.close()
 # SUBMIT MODAL
@@ -296,7 +280,7 @@ class SubmitModel(
         ).strip().lower()
 
         # VALIDATE DIFFICULTY
-         allowed_difficulties = {
+        allowed_difficulties = {
             "easy",
             "medium",
             "hard",
@@ -419,7 +403,7 @@ async def submit(
     interaction: discord.Interaction,
 ):
     await interaction.response.send_modal(
-        SubmitModal()
+        SubmitModel()
     )
 
 bot.run(TOKEN)
