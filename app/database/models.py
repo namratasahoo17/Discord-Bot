@@ -119,6 +119,24 @@ class StudySubmission(Base):
         ),
     )"""
 
+class BadgeCategory(Base):
+    __tablename__ = "badge_categories"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    name: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+    )
+
+    badges: Mapped[list["Badge"]] = relationship(
+        back_populates="category",
+        cascade="all, delete-orphan",
+    )
+
 
 class Badge(Base):
     __tablename__ = "badges"
@@ -138,9 +156,13 @@ class Badge(Base):
         nullable=False,
     )
 
-    category: Mapped[str] = mapped_column(
-        String(50),
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("badge_categories.id"),
         nullable=False,
+    )
+
+    category: Mapped["BadgeCategory"] = relationship(
+        back_populates="badges"
     )
 
     requirement_type: Mapped[str] = mapped_column(
