@@ -328,6 +328,12 @@ async def profile(
             inline=True,
         )
 
+        embed.add_field(
+            name="🔥 Streak",
+            value=f"{user.streaks.length if user.streaks else 0} day(s)",
+            inline=True,    
+        )
+
         # ------------------------------------------------
         # Footer
         # ------------------------------------------------
@@ -335,6 +341,7 @@ async def profile(
         embed.set_footer(
             text="Custos. Study. Track. Grow."
         )
+
 
         # ------------------------------------------------
         # Send private profile

@@ -138,6 +138,31 @@ class Badge(Base):
         nullable=False,
     )
 
+    category: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    requirement_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    requirement_value: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
+
+    emoji: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+    )
+
+    rarity: Mapped[str] = mapped_column(
+        String(20),
+        default="common",
+        nullable=False,
+    )
+
 
 class UserBadge(Base):
     __tablename__ = "user_badges"
@@ -168,6 +193,10 @@ class UserBadge(Base):
     # Connect this UserBadge to the Badge
     badge: Mapped["Badge"] = relationship()
 
+    icon: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
     # A user should never receive the exact same badge twice.
     __table_args__ = (
         UniqueConstraint(
