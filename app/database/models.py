@@ -51,6 +51,13 @@ class User(Base):
         cascade="all, delete-orphan",
     )
 
+    # One user -> many study streaks
+    streak: Mapped["UserStreak | None"] = relationship(
+    back_populates="user",
+    cascade="all, delete-orphan",
+)
+
+
 
 class StudySubmission(Base):
     __tablename__ = "study_submissions"
@@ -168,4 +175,45 @@ class UserBadge(Base):
             "badge_id",
             name="unique_user_badge",
         ),
+    )
+
+class UserStreak(Base):
+    __tablename__ = "user_streaks"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    start_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+    end_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
+    length: Mapped[int] = mapped_column(
+        default=1,
+        nullable=False,
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        default=True,
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship(
+        back_populates="streaks"
     )

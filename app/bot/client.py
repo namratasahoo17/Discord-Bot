@@ -7,6 +7,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 from app.database.connection import SessionLocal
 from app.database.models import User,StudySubmission
+from app.services.streak import update_streak
 
 load_dotenv()
 
