@@ -52,7 +52,7 @@ class User(Base):
     )
 
     # One user -> many study streaks
-    streak: Mapped["UserStreak | None"] = relationship(
+    streaks: Mapped["UserStreak | None"] = relationship(
     back_populates="user",
     cascade="all, delete-orphan",
 )
