@@ -17,6 +17,10 @@ from app.services.badges_category_seed import (
     seed_badge_categories,
 )
 
+from app.services.badges_seed import (
+    seed_badges,
+)
+
 
 # ---------------------------------------------------------
 # Create database tables
@@ -35,7 +39,7 @@ db = SessionLocal()
 
 try:
     seed_badge_categories(db)
-
+    seed_badges(db)
     print("Database initialized.")
 
 except Exception as e:
