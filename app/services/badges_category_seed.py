@@ -3,25 +3,46 @@ from sqlalchemy.orm import Session
 from ..database.models import BadgeCategory
 
 
+CATEGORY_DATA = [
+    {
+        "name": "Studycraft",
+    },
+    {
+        "name": "Chronicle",
+    },
+    {
+        "name": "Knowledge",
+    },
+    {
+        "name": "Momentum",
+    },
+    {
+        "name": "Milestones",
+    },
+    {
+        "name": "Consistency",
+    },
+    {
+        "name": "Comeback",
+    },
+    {
+        "name": "Exploration",
+    },
+]
+
+
 def seed_badge_categories(
     db: Session,
 ) -> None:
     """
-    Seed predefined badge categories.
+    Seed the predefined Custos badge categories.
 
-    Add categories to CATEGORY_DATA below.
-    Existing categories should not be duplicated.
+    Existing categories are not duplicated.
+
+    If a new category is added to CATEGORY_DATA later,
+    running the database initialization will automatically
+    add the missing category.
     """
-
-    CATEGORY_DATA = [
-        # Add your categories here.
-        #
-        # Example:
-        #
-        # {
-        #     "name": "Streak",
-        # },
-    ]
 
     for category_data in CATEGORY_DATA:
 
