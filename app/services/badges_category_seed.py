@@ -4,28 +4,35 @@ from ..database.models import BadgeCategory
 
 
 CATEGORY_DATA = [
-    {
+    {   "id": 1,
         "name": "Studycraft",
     },
     {
+        "id": 2,    
         "name": "Chronicle",
     },
-    {
+    {   
+        "id": 3,
         "name": "Knowledge",
     },
     {
+        "id": 4,
         "name": "Momentum",
     },
     {
+        "id": 5,
         "name": "Milestones",
     },
     {
+        "id": 6,
         "name": "Consistency",
     },
     {
+        "id": 7,
         "name": "Comeback",
     },
     {
+        "id": 8,
         "name": "Exploration",
     },
 ]
