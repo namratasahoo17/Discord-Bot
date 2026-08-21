@@ -212,7 +212,39 @@ BADGE_DATA = [{
     "emoji": "🎓",
     "rarity": "legendary",
 },
-
+{
+    "id": 20,
+    "name": "Achievement Hunter",
+    "description": "Achieve 10 badges",
+    "category_id": 5 ,
+    "category": "Milestones",
+    "requirement_type": "Earn 10 badges",
+    "requirement_value": 10,
+    "emoji": "🥈",
+    "rarity": "rare",
+},
+{
+    "id": 21
+    "name": "Badge Collector",
+    "description": "Earn 20 badges.",
+    "category_id": 5 ,
+    "category": "Milestones",
+    "requirement_type": "badges",
+    "requirement_value": 20,
+    "emoji": "💎",
+    "rarity": "epic",
+},
+{
+    "id": 22
+    "name": "Completionist",
+    "description": "Earn every non-secret badge.",
+    "category_id": 5 ,
+    "category": "Milestones",
+    "requirement_type": "completionist",
+    "requirement_value": None,
+    "emoji": "👑",
+    "rarity": "legendary",
+},
 ]
 
 
