@@ -1,14 +1,25 @@
 import os
+
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import discord
+
 from discord import app_commands
+
 from dotenv import load_dotenv
 
 from app.database.connection import SessionLocal
-from app.database.models import User, StudySubmission
-from app.services.streak import update_streak
+
+from app.database.models import (
+    User,
+    StudySubmission,
+)
+
+from app.services.streaks import (
+    update_streak,
+    get_current_streak,
+)
 
 
 # ============================================================
@@ -35,13 +46,17 @@ intents = discord.Intents.default()
 class CustosBot(discord.Client):
 
     def __init__(self):
-        super().__init__(intents=intents)
+
+        super().__init__(
+            intents=intents
+        )
 
         self.tree = app_commands.CommandTree(
             self
         )
 
     async def setup_hook(self):
+
         await self.tree.sync()
 
 
@@ -54,6 +69,7 @@ bot = CustosBot()
 
 @bot.event
 async def on_ready():
+
     print(
         f"Logged in as {bot.user}"
     )
@@ -70,6 +86,7 @@ async def on_ready():
 async def ping(
     interaction: discord.Interaction,
 ):
+
     await interaction.response.send_message(
         "Pong! Custos is online."
     )
@@ -148,13 +165,14 @@ class RegisterModal(
         try:
 
             # ------------------------------------------------
-            # Check whether the user already exists
+            # Check existing user
             # ------------------------------------------------
 
             existing_user = (
                 db.query(User)
                 .filter(
-                    User.discord_id == discord_id
+                    User.discord_id
+                    == discord_id
                 )
                 .first()
             )
@@ -169,7 +187,7 @@ class RegisterModal(
                 return
 
             # ------------------------------------------------
-            # Create new user
+            # Create user
             # ------------------------------------------------
 
             new_user = User(
@@ -257,14 +275,11 @@ async def profile(
         user = (
             db.query(User)
             .filter(
-                User.discord_id == discord_id
+                User.discord_id
+                == discord_id
             )
             .first()
         )
-
-        # ------------------------------------------------
-        # User must be registered
-        # ------------------------------------------------
 
         if not user:
 
@@ -277,7 +292,22 @@ async def profile(
             return
 
         # ------------------------------------------------
-        # Create profile embed
+        # Get current streak
+        # ------------------------------------------------
+
+        current_streak = get_current_streak(
+            db,
+            user,
+        )
+
+        streak_length = (
+            current_streak.length
+            if current_streak
+            else 0
+        )
+
+        # ------------------------------------------------
+        # Profile embed
         # ------------------------------------------------
 
         embed = discord.Embed(
@@ -328,10 +358,14 @@ async def profile(
             inline=True,
         )
 
+        # ------------------------------------------------
+        # Current streak
+        # ------------------------------------------------
+
         embed.add_field(
             name="🔥 Streak",
-            value=f"{user.streaks.length if user.streaks else 0} day(s)",
-            inline=True,    
+            value=f"{streak_length} day(s)",
+            inline=True,
         )
 
         # ------------------------------------------------
@@ -342,9 +376,8 @@ async def profile(
             text="Custos. Study. Track. Grow."
         )
 
-
         # ------------------------------------------------
-        # Send private profile
+        # Send profile
         # ------------------------------------------------
 
         await interaction.response.send_message(
@@ -373,7 +406,7 @@ async def profile(
 # SUBMIT MODAL
 # ============================================================
 
-class SubmitModel(
+class SubmitModal(
     discord.ui.Modal,
     title="Today's Study",
 ):
@@ -412,11 +445,8 @@ class SubmitModel(
         )
 
         # ====================================================
-        # GET CURRENT DATE
+        # CURRENT DATE
         # ====================================================
-
-        # Custos uses Indian Standard Time so the
-        # study day isn't dependent on the server timezone.
 
         today = datetime.now(
             ZoneInfo("Asia/Kolkata")
@@ -460,7 +490,8 @@ class SubmitModel(
             user = (
                 db.query(User)
                 .filter(
-                    User.discord_id == discord_id
+                    User.discord_id
+                    == discord_id
                 )
                 .first()
             )
@@ -482,8 +513,11 @@ class SubmitModel(
             existing_submission = (
                 db.query(StudySubmission)
                 .filter(
-                    StudySubmission.user_id == user.id,
-                    StudySubmission.study_date == today,
+                    StudySubmission.user_id
+                    == user.id,
+
+                    StudySubmission.study_date
+                    == today,
                 )
                 .first()
             )
@@ -532,11 +566,8 @@ class SubmitModel(
             )
 
             # =================================================
-            # COMMIT EVERYTHING
+            # COMMIT
             # =================================================
-
-            # Both the StudySubmission and UserStreak
-            # are committed together.
 
             db.commit()
 
@@ -563,10 +594,6 @@ class SubmitModel(
             )
 
         except Exception as e:
-
-            # =================================================
-            # ROLLBACK
-            # =================================================
 
             db.rollback()
 
@@ -599,7 +626,7 @@ async def submit(
 ):
 
     await interaction.response.send_modal(
-        SubmitModel()
+        SubmitModal()
     )
 
 

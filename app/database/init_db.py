@@ -22,27 +22,30 @@ from app.services.badges_seed import (
 )
 
 
-# ---------------------------------------------------------
-# Create database tables
-# ---------------------------------------------------------
+# ============================================================
+# CREATE DATABASE TABLES
+# ============================================================
 
 Base.metadata.create_all(
     bind=engine
 )
 
 
-# ---------------------------------------------------------
-# Seed default data
-# ---------------------------------------------------------
+# ============================================================
+# SEED DEFAULT DATA
+# ============================================================
 
 db = SessionLocal()
 
 try:
+
     seed_badge_categories(db)
     seed_badges(db)
-    print("Database initialized.")
+
+    print("Database initialized successfully.")
 
 except Exception as e:
+
     db.rollback()
 
     print(
@@ -52,4 +55,5 @@ except Exception as e:
     raise
 
 finally:
+
     db.close()

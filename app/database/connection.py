@@ -15,4 +15,6 @@ class Base(DeclarativeBase):
     pass
 
 
-SessionLocal = sessionmaker(bind=engine)
+SessionLocal = sessionmaker(
+    bind=engine
+)
