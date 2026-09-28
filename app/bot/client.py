@@ -2,13 +2,13 @@ import os
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
+import json
 import discord
 
 from discord import app_commands
 
 from dotenv import load_dotenv
-
+from app.services.ai.analyzer import analyze_student
 from app.database.connection import SessionLocal
 
 from app.database.models import (
@@ -629,6 +629,276 @@ async def submit(
         SubmitModal()
     )
 
+
+# ============================================================
+# /ANALYZE
+# ============================================================
+
+@bot.tree.command(
+    name="analyze",
+    description="Analyze your study progress using AI",
+)
+async def analyze(
+    interaction: discord.Interaction,
+):
+
+    # ------------------------------------------------
+    # Defer response because AI may take a few seconds
+    # ------------------------------------------------
+
+    await interaction.response.defer(
+        ephemeral=True
+    )
+
+    discord_id = str(
+        interaction.user.id
+    )
+
+    db = SessionLocal()
+
+    try:
+
+        # ====================================================
+        # FIND USER
+        # ====================================================
+
+        user = (
+            db.query(User)
+            .filter(
+                User.discord_id == discord_id
+            )
+            .first()
+        )
+
+        if not user:
+
+            await interaction.followup.send(
+                "You aren't registered with Custos yet.\n"
+                "Please use `/register` first.",
+                ephemeral=True,
+            )
+
+            return
+
+        # ====================================================
+        # GET STUDY HISTORY
+        # ====================================================
+
+        submissions = (
+            db.query(StudySubmission)
+            .filter(
+                StudySubmission.user_id == user.id
+            )
+            .order_by(
+                StudySubmission.study_date.asc()
+            )
+            .all()
+        )
+
+        if not submissions:
+
+            await interaction.followup.send(
+                "You don't have any study submissions yet.\n"
+                "Use `/submit` to start building your study history.",
+                ephemeral=True,
+            )
+
+            return
+
+        # ====================================================
+        # GET CURRENT STREAK
+        # ====================================================
+
+        current_streak = get_current_streak(
+            db,
+            user,
+        )
+
+        streak_length = (
+            current_streak.length
+            if current_streak
+            else 0
+        )
+
+        # ====================================================
+        # PREPARE STUDY DATA
+        # ====================================================
+
+        study_history = []
+
+        for submission in submissions:
+
+            study_history.append({
+                "date": str(
+                    submission.study_date
+                ),
+
+                "subject": submission.subject,
+
+                "description": submission.description,
+
+                "difficulty": submission.difficulty,
+            })
+
+        # ====================================================
+        # CREATE AI DATA
+        # ====================================================
+
+        analysis_data = {
+            "username": user.username,
+
+            "total_submissions": len(
+                submissions
+            ),
+
+            "current_streak": streak_length,
+
+            "study_history": study_history,
+        }
+
+        # ====================================================
+        # SEND DATA TO GEMINI
+        # ====================================================
+
+        analysis = await analyze_student(
+            analysis_data
+        )
+
+        # ====================================================
+        # CREATE DISCORD EMBED
+        # ====================================================
+
+        embed = discord.Embed(
+            title="🧠 Custos AI Analysis",
+            description=(
+                f"Here's your study analysis, "
+                f"{interaction.user.mention}."
+            ),
+        )
+
+        # ====================================================
+        # STRENGTHS
+        # ====================================================
+
+        strengths = analysis.get(
+            "strengths",
+            []
+        )
+
+        if strengths:
+
+            embed.add_field(
+                name="💪 Strengths",
+                value="\n".join(
+                    f"• {strength}"
+                    for strength in strengths
+                ),
+                inline=False,
+            )
+
+        # ====================================================
+        # WEAKNESSES
+        # ====================================================
+
+        weaknesses = analysis.get(
+            "weaknesses",
+            []
+        )
+
+        if weaknesses:
+
+            embed.add_field(
+                name="⚠️ Areas to Improve",
+                value="\n".join(
+                    f"• {weakness}"
+                    for weakness in weaknesses
+                ),
+                inline=False,
+            )
+
+        # ====================================================
+        # RECOMMENDATIONS
+        # ====================================================
+
+        recommendations = analysis.get(
+            "recommendations",
+            []
+        )
+
+        if recommendations:
+
+            embed.add_field(
+                name="🎯 Recommendations",
+                value="\n".join(
+                    f"• {recommendation}"
+                    for recommendation in recommendations
+                ),
+                inline=False,
+            )
+
+        # ====================================================
+        # FOCUS TOPICS
+        # ====================================================
+
+        focus_topics = analysis.get(
+            "focus_topics",
+            []
+        )
+
+        if focus_topics:
+
+            embed.add_field(
+                name="📚 Focus Topics",
+                value=", ".join(
+                    focus_topics
+                ),
+                inline=False,
+            )
+
+        # ====================================================
+        # FOOTER
+        # ====================================================
+
+        embed.set_footer(
+            text="Custos • Study. Track. Grow."
+        )
+
+        # ====================================================
+        # SEND RESULT
+        # ====================================================
+
+        await interaction.followup.send(
+            embed=embed,
+            ephemeral=True,
+        )
+
+    except json.JSONDecodeError:
+
+        print(
+            "Gemini returned invalid JSON."
+        )
+
+        await interaction.followup.send(
+            "Gemini returned an invalid analysis. "
+            "Please try again.",
+            ephemeral=True,
+        )
+
+    except Exception as e:
+
+        print(
+            f"AI analysis error: {e}"
+        )
+
+        await interaction.followup.send(
+            "Something went wrong while "
+            "analyzing your study progress.",
+            ephemeral=True,
+        )
+
+    finally:
+
+        db.close()
 
 # ============================================================
 # START BOT
