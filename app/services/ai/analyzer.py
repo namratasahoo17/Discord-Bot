@@ -1,6 +1,8 @@
 import os
 import json
+from pathlib import Path
 
+from dotenv import load_dotenv
 from google import genai
 
 from .prompts import (
@@ -10,16 +12,47 @@ from .prompts import (
 
 
 # ============================================================
-# GEMINI CLIENT
+# FIND PROJECT ROOT
 # ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+ENV_FILE = PROJECT_ROOT / ".env"
+
+print(f"[AI] Looking for .env at: {ENV_FILE}")
+print(f"[AI] .env exists: {ENV_FILE.exists()}")
+
+
+# ============================================================
+# LOAD ENVIRONMENT VARIABLES
+# ============================================================
+
+load_dotenv(ENV_FILE)
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 
+
+print(
+    f"[AI] Gemini API key: "
+    f"{'FOUND' if API_KEY else 'NOT FOUND'}"
+)
+
+
+# ============================================================
+# CHECK API KEY
+# ============================================================
+
 if not API_KEY:
     raise RuntimeError(
-        "GEMINI_API_KEY is not set in .env"
+        f"GEMINI_API_KEY was not found.\n"
+        f"Expected .env location:\n"
+        f"{ENV_FILE}"
     )
 
+
+# ============================================================
+# GEMINI CLIENT
+# ============================================================
 
 client = genai.Client(
     api_key=API_KEY
@@ -27,13 +60,10 @@ client = genai.Client(
 
 
 # ============================================================
-# AI ANALYSIS
+# ANALYZE STUDENT
 # ============================================================
 
 async def analyze_student(data):
-    """
-    Analyze a student's study data using Gemini.
-    """
 
     prompt = (
         SYSTEM_PROMPT
@@ -52,4 +82,3 @@ async def analyze_student(data):
     result = response.text
 
     return json.loads(result)
-

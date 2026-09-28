@@ -1,13 +1,13 @@
-import os
 
+import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import json
 import discord
 
 from discord import app_commands
-
 from dotenv import load_dotenv
+
 from app.services.ai.analyzer import analyze_student
 from app.database.connection import SessionLocal
 
@@ -164,10 +164,6 @@ class RegisterModal(
 
         try:
 
-            # ------------------------------------------------
-            # Check existing user
-            # ------------------------------------------------
-
             existing_user = (
                 db.query(User)
                 .filter(
@@ -186,10 +182,6 @@ class RegisterModal(
 
                 return
 
-            # ------------------------------------------------
-            # Create user
-            # ------------------------------------------------
-
             new_user = User(
                 discord_id=discord_id,
                 username=username,
@@ -199,10 +191,6 @@ class RegisterModal(
             db.add(new_user)
 
             db.commit()
-
-            # ------------------------------------------------
-            # Confirmation
-            # ------------------------------------------------
 
             await interaction.response.send_message(
                 f"You're registered, "
@@ -268,10 +256,6 @@ async def profile(
 
     try:
 
-        # ------------------------------------------------
-        # Find user
-        # ------------------------------------------------
-
         user = (
             db.query(User)
             .filter(
@@ -291,10 +275,6 @@ async def profile(
 
             return
 
-        # ------------------------------------------------
-        # Get current streak
-        # ------------------------------------------------
-
         current_streak = get_current_streak(
             db,
             user,
@@ -306,10 +286,6 @@ async def profile(
             else 0
         )
 
-        # ------------------------------------------------
-        # Profile embed
-        # ------------------------------------------------
-
         embed = discord.Embed(
             title="📚 Custos Profile",
             description=(
@@ -317,10 +293,6 @@ async def profile(
                 f"{interaction.user.mention}"
             ),
         )
-
-        # ------------------------------------------------
-        # Basic information
-        # ------------------------------------------------
 
         embed.add_field(
             name="Name",
@@ -346,10 +318,6 @@ async def profile(
             inline=True,
         )
 
-        # ------------------------------------------------
-        # Registration date
-        # ------------------------------------------------
-
         embed.add_field(
             name="📅 Registered",
             value=user.created_at.strftime(
@@ -358,27 +326,15 @@ async def profile(
             inline=True,
         )
 
-        # ------------------------------------------------
-        # Current streak
-        # ------------------------------------------------
-
         embed.add_field(
             name="🔥 Streak",
             value=f"{streak_length} day(s)",
             inline=True,
         )
 
-        # ------------------------------------------------
-        # Footer
-        # ------------------------------------------------
-
         embed.set_footer(
             text="Custos. Study. Track. Grow."
         )
-
-        # ------------------------------------------------
-        # Send profile
-        # ------------------------------------------------
 
         await interaction.response.send_message(
             embed=embed,
@@ -403,95 +359,71 @@ async def profile(
 
 
 # ============================================================
-# SUBMIT MODAL
+# DIFFICULTY BUTTON
 # ============================================================
 
-class SubmitModal(
-    discord.ui.Modal,
-    title="Today's Study",
+class DifficultyButton(
+    discord.ui.Button
 ):
 
-    subject = discord.ui.TextInput(
-        label="What did you study?",
-        placeholder="e.g. Data Structures",
-        required=True,
-        max_length=200,
-    )
+    def __init__(
+        self,
+        label,
+        value,
+        emoji,
+        subject,
+        description,
+        today,
+        user_id,
+    ):
 
-    description = discord.ui.TextInput(
-        label="What did you learn?",
-        placeholder=(
-            "Describe what you studied today..."
-        ),
-        required=True,
-        style=discord.TextStyle.paragraph,
-        max_length=2000,
-    )
+        super().__init__(
+            label=label,
+            style=discord.ButtonStyle.secondary,
+            emoji=emoji,
+        )
 
-    difficulty = discord.ui.TextInput(
-        label="Difficulty",
-        placeholder="Easy / Medium / Hard",
-        required=True,
-        max_length=20,
-    )
+        self.value = value
+        self.subject = subject
+        self.description = description
+        self.today = today
+        self.user_id = user_id
 
-    async def on_submit(
+    async def callback(
         self,
         interaction: discord.Interaction,
     ):
 
-        discord_id = str(
-            interaction.user.id
+        print(
+            f"[SUBMIT] Difficulty selected: {self.value}"
         )
 
-        # ====================================================
-        # CURRENT DATE
-        # ====================================================
-
-        today = datetime.now(
-            ZoneInfo("Asia/Kolkata")
-        ).date()
-
-        # ====================================================
-        # VALIDATE DIFFICULTY
-        # ====================================================
-
-        difficulty_value = str(
-            self.difficulty.value
-        ).strip().lower()
-
-        allowed_difficulties = {
-            "easy",
-            "medium",
-            "hard",
-        }
-
-        if difficulty_value not in allowed_difficulties:
+        # Make sure only the original user
+        # can use these buttons.
+        if str(interaction.user.id) != str(self.user_id):
 
             await interaction.response.send_message(
-                "Invalid difficulty.\n\n"
-                "Please enter one of:\n"
-                "🟢 Easy\n"
-                "🟡 Medium\n"
-                "🔴 Hard",
+                "This difficulty menu belongs to another user.",
                 ephemeral=True,
             )
 
             return
 
+        difficulty_value = self.value
+
         db = SessionLocal()
 
         try:
 
-            # =================================================
+            # ====================================================
             # FIND USER
-            # =================================================
+            # ====================================================
 
             user = (
                 db.query(User)
                 .filter(
                     User.discord_id
-                    == discord_id
+                    == str(interaction.user.id)
                 )
                 .first()
             )
@@ -505,6 +437,323 @@ class SubmitModal(
                 )
 
                 return
+
+            # ====================================================
+            # CHECK TODAY'S SUBMISSION
+            # ====================================================
+
+            existing_submission = (
+                db.query(StudySubmission)
+                .filter(
+                    StudySubmission.user_id
+                    == user.id,
+
+                    StudySubmission.study_date
+                    == self.today,
+                )
+                .first()
+            )
+
+            if existing_submission:
+
+                await interaction.response.edit_message(
+                    content=(
+                        "You've already submitted today's "
+                        "study log.\n\n"
+                        "You can submit again tomorrow."
+                    ),
+                    view=None,
+                )
+
+                return
+
+            # ====================================================
+            # CREATE STUDY SUBMISSION
+            # ====================================================
+
+            submission = StudySubmission(
+                user_id=user.id,
+                study_date=self.today,
+                subject=self.subject,
+                description=self.description,
+                difficulty=difficulty_value,
+            )
+
+            db.add(submission)
+
+            # ====================================================
+            # UPDATE STREAK
+            # ====================================================
+
+            streak = update_streak(
+                db=db,
+                user=user,
+                study_date=self.today,
+            )
+
+            # ====================================================
+            # COMMIT
+            # ====================================================
+
+            db.commit()
+
+            print(
+                "[SUBMIT] Study submission saved successfully"
+            )
+
+            # ====================================================
+            # CONFIRMATION
+            # ====================================================
+
+            await interaction.response.edit_message(
+                content=(
+                    "✅ **Today's study has been submitted!**\n\n"
+
+                    f"📖 **Topics:** "
+                    f"{submission.subject}\n\n"
+
+                    f"📝 **What you learned:** "
+                    f"{submission.description}\n\n"
+
+                    f"📊 **Difficulty:** "
+                    f"{submission.difficulty.title()}\n"
+
+                    f"📅 **Date:** "
+                    f"{submission.study_date.strftime('%d %B %Y')}\n"
+
+                    f"🔥 **Current streak:** "
+                    f"{streak.length} day(s)"
+                ),
+                view=None,
+            )
+
+        except Exception as e:
+
+            db.rollback()
+
+            print(
+                f"[SUBMIT] Difficulty button error: {e}"
+            )
+
+            try:
+
+                await interaction.response.edit_message(
+                    content=(
+                        "❌ Something went wrong while "
+                        "saving your study log.\n"
+                        "Please try again."
+                    ),
+                    view=None,
+                )
+
+            except Exception as response_error:
+
+                print(
+                    f"[SUBMIT] Could not send error message: "
+                    f"{response_error}"
+                )
+
+        finally:
+
+            db.close()
+
+
+# ============================================================
+# DIFFICULTY VIEW
+# ============================================================
+
+class DifficultyView(
+    discord.ui.View
+):
+
+    def __init__(
+        self,
+        subject,
+        description,
+        user_id,
+        today,
+    ):
+
+        # Give the user 5 minutes to choose.
+        super().__init__(
+            timeout=300
+        )
+
+        self.add_item(
+            DifficultyButton(
+                label="Easy",
+                value="easy",
+                emoji="🟢",
+                subject=subject,
+                description=description,
+                today=today,
+                user_id=user_id,
+            )
+        )
+
+        self.add_item(
+            DifficultyButton(
+                label="Medium",
+                value="medium",
+                emoji="🟡",
+                subject=subject,
+                description=description,
+                today=today,
+                user_id=user_id,
+            )
+        )
+
+        self.add_item(
+            DifficultyButton(
+                label="Hard",
+                value="hard",
+                emoji="🔴",
+                subject=subject,
+                description=description,
+                today=today,
+                user_id=user_id,
+            )
+        )
+
+
+# ============================================================
+# SUBMIT MODAL
+# ============================================================
+
+class SubmitModal(
+    discord.ui.Modal,
+    title="Today's Study",
+):
+
+    subject = discord.ui.TextInput(
+        label="What did you study?",
+        placeholder=(
+            "e.g. Arrays, Linked Lists, Binary Trees"
+        ),
+        required=True,
+        max_length=500,
+    )
+
+    description = discord.ui.TextInput(
+        label="What did you learn?",
+        placeholder=(
+            "Describe what you studied today..."
+        ),
+        required=True,
+        style=discord.TextStyle.paragraph,
+        max_length=2000,
+    )
+
+    async def on_submit(
+        self,
+        interaction: discord.Interaction,
+    ):
+
+        print(
+            "[SUBMIT] Modal submitted"
+        )
+
+        # ========================================================
+        # IMPORTANT FIX
+        # ========================================================
+        # Acknowledge the modal immediately.
+        #
+        # Previously the bot did database work before responding.
+        # If that took too long, Discord could consider the modal
+        # interaction expired, which prevented the difficulty menu
+        # from appearing.
+        #
+        # We defer immediately and use followup.send() later.
+        # ========================================================
+
+        await interaction.response.defer(
+            ephemeral=True
+        )
+
+        discord_id = str(
+            interaction.user.id
+        )
+
+        today = datetime.now(
+            ZoneInfo("Asia/Kolkata")
+        ).date()
+
+        subject_value = str(
+            self.subject.value
+        ).strip()
+
+        description_value = str(
+            self.description.value
+        ).strip()
+
+        print(
+            f"[SUBMIT] Subject: {subject_value}"
+        )
+
+        print(
+            f"[SUBMIT] Description: {description_value}"
+        )
+
+        print(
+            f"[SUBMIT] Date: {today}"
+        )
+
+        # ====================================================
+        # VALIDATE INPUT
+        # ====================================================
+
+        if not subject_value:
+
+            await interaction.followup.send(
+                "Please enter at least one topic.",
+                ephemeral=True,
+            )
+
+            return
+
+        if not description_value:
+
+            await interaction.followup.send(
+                "Please describe what you learned.",
+                ephemeral=True,
+            )
+
+            return
+
+        # ====================================================
+        # CHECK USER
+        # ====================================================
+
+        db = SessionLocal()
+
+        try:
+
+            print(
+                "[SUBMIT] Checking user..."
+            )
+
+            user = (
+                db.query(User)
+                .filter(
+                    User.discord_id
+                    == discord_id
+                )
+                .first()
+            )
+
+            if not user:
+
+                await interaction.followup.send(
+                    "You aren't registered with Custos yet.\n"
+                    "Please use `/register` first.",
+                    ephemeral=True,
+                )
+
+                return
+
+            print(
+                f"[SUBMIT] User found: {user.username}"
+            )
 
             # =================================================
             # CHECK TODAY'S SUBMISSION
@@ -524,7 +773,11 @@ class SubmitModal(
 
             if existing_submission:
 
-                await interaction.response.send_message(
+                print(
+                    "[SUBMIT] User already submitted today."
+                )
+
+                await interaction.followup.send(
                     "You've already submitted today's "
                     "study log.\n\n"
                     "You can submit again tomorrow.",
@@ -534,83 +787,94 @@ class SubmitModal(
                 return
 
             # =================================================
-            # CREATE STUDY SUBMISSION
+            # SAVE USER ID
             # =================================================
 
-            submission = StudySubmission(
-                user_id=user.id,
-
-                study_date=today,
-
-                subject=str(
-                    self.subject.value
-                ).strip(),
-
-                description=str(
-                    self.description.value
-                ).strip(),
-
-                difficulty=difficulty_value,
-            )
-
-            db.add(submission)
-
-            # =================================================
-            # UPDATE STREAK
-            # =================================================
-
-            streak = update_streak(
-                db=db,
-                user=user,
-                study_date=today,
-            )
-
-            # =================================================
-            # COMMIT
-            # =================================================
-
-            db.commit()
-
-            # =================================================
-            # CONFIRMATION
-            # =================================================
-
-            await interaction.response.send_message(
-                "✅ **Today's study has been submitted!**\n\n"
-
-                f"📖 **Subject:** "
-                f"{submission.subject}\n"
-
-                f"📊 **Difficulty:** "
-                f"{submission.difficulty.title()}\n"
-
-                f"📅 **Date:** "
-                f"{submission.study_date.strftime('%d %B %Y')}\n"
-
-                f"🔥 **Current streak:** "
-                f"{streak.length} day(s)",
-
-                ephemeral=True,
-            )
+            user_id = user.id
 
         except Exception as e:
 
-            db.rollback()
-
             print(
-                f"Submission error: {e}"
+                f"[SUBMIT] Database error: {e}"
             )
 
-            await interaction.response.send_message(
-                "Something went wrong while submitting "
+            await interaction.followup.send(
+                "Something went wrong while checking "
                 "your study log.\n"
                 "Please try again.",
                 ephemeral=True,
             )
 
+            return
+
         finally:
 
             db.close()
+
+        # ====================================================
+        # CREATE DIFFICULTY VIEW
+        # ====================================================
+
+        print(
+            "[SUBMIT] Creating difficulty view..."
+        )
+
+        try:
+
+            view = DifficultyView(
+                subject=subject_value,
+                description=description_value,
+                user_id=user_id,
+                today=today,
+            )
+
+            print(
+                "[SUBMIT] Difficulty view created"
+            )
+
+            # ====================================================
+            # SEND DIFFICULTY BUTTONS
+            # ====================================================
+
+            # IMPORTANT:
+            # Because the original interaction was deferred,
+            # we MUST use followup.send(), not response.send_message().
+            await interaction.followup.send(
+                "### 📊 How difficult was today's study?\n\n"
+                f"📖 **Topics:** {subject_value}\n\n"
+                f"📝 **What you learned:** "
+                f"{description_value}\n\n"
+                "Select a difficulty:",
+
+                view=view,
+                ephemeral=True,
+            )
+
+            print(
+                "[SUBMIT] Difficulty buttons sent successfully"
+            )
+
+        except Exception as e:
+
+            print(
+                f"[SUBMIT] ERROR CREATING DIFFICULTY MENU: {e}"
+            )
+
+            try:
+
+                await interaction.followup.send(
+                    "❌ Something went wrong while "
+                    "showing the difficulty options.\n"
+                    "Check the bot terminal for the error.",
+                    ephemeral=True,
+                )
+
+            except Exception as response_error:
+
+                print(
+                    f"[SUBMIT] Could not send error message: "
+                    f"{response_error}"
+                )
 
 
 # ============================================================
@@ -900,8 +1164,10 @@ async def analyze(
 
         db.close()
 
+
 # ============================================================
 # START BOT
 # ============================================================
 
 bot.run(TOKEN)
+
